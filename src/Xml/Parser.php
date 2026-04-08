@@ -166,7 +166,7 @@ class Parser {
                     $result->setCustomer($this->parseCustomerData($child));
                     break;
                 case 'amount':
-                    $result->setAmount((double)$child->nodeValue);
+                    $result->setAmount((float)$child->nodeValue);
                     break;
                 case 'currency':
                     $result->setCurrency($child->nodeValue);
@@ -256,7 +256,7 @@ class Parser {
                     $statusResult->setCustomer($this->parseCustomerData($child));
                     break;
                 case 'amount':
-                    $statusResult->setAmount((double)$child->nodeValue);
+                    $statusResult->setAmount((float)$child->nodeValue);
                     break;
                 case 'currency':
                     $statusResult->setCurrency($child->nodeValue);
@@ -310,7 +310,7 @@ class Parser {
                     } elseif (ctype_digit($val)) {
                         $val = (int)$val;
                     } elseif (is_numeric($val)) {
-                        $val = (double)$val;
+                        $val = (float)$val;
                     } else {
                         $json = json_decode($val, true);
                         if ($json !== null) {
@@ -713,7 +713,7 @@ class Parser {
                     $data->setOriginalTransactionId($child->nodeValue);
                     break;
                 case 'amount':
-                    $data->setAmount((double)$child->nodeValue);
+                    $data->setAmount((float)$child->nodeValue);
                     break;
                 case 'currency':
                     $data->setCurrency($child->nodeValue);
@@ -757,7 +757,7 @@ class Parser {
                     $data->setChargebackReferenceId($child->nodeValue);
                     break;
                 case 'amount':
-                    $data->setAmount((double)$child->nodeValue);
+                    $data->setAmount((float)$child->nodeValue);
                     break;
                 case 'currency':
                     $data->setCurrency($child->nodeValue);

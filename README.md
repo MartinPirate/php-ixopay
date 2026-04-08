@@ -23,6 +23,9 @@ provides convenient access to the [IXOPAY REST APIs][ixopay-docs-api].
     - [Prerequisites](#prerequisites)
     - [Setting up credentials](#setting-up-credentials)
     - [Process a debit transaction](#process-a-debit-transaction)
+    - [Local sandbox](#local-sandbox)
+    - [Laravel integration](#laravel-integration)
+  - [Application Notes](#application-notes)
   - [Support](#support)
   - [Licence](#licence)
   - [See also](#see-also)
@@ -149,6 +152,103 @@ if ($result->isSuccess()) {
 
 ?>
 ```
+
+### Local sandbox
+
+The repository also includes a lightweight local sandbox example that lets you
+point the SDK at a local API URL and exercise predictable transaction outcomes
+such as redirect, pending, finished, and error flows.
+
+Start the sandbox:
+
+```bash
+php -S 127.0.0.1:8089 examples/sandbox/router.php
+```
+
+Run the demo debit:
+
+```bash
+php examples/sandbox/debit.php redirect
+```
+
+See [`examples/sandbox`](examples/sandbox) for details.
+
+### Laravel integration
+
+The SDK can also be wired into a Laravel application with a lightweight
+service provider, config file, and facade.
+
+#### 1. Install the package
+
+```bash
+composer require ixopay/ixopay-php-client
+```
+
+#### 2. Publish the config
+
+```bash
+php artisan vendor:publish --tag=ixopay-config
+```
+
+Or use the package install command:
+
+```bash
+php artisan ixopay:install
+```
+
+#### 3. Configure credentials
+
+```env
+IXOPAY_USERNAME=your_username
+IXOPAY_PASSWORD=your_password
+IXOPAY_API_KEY=your_api_key
+IXOPAY_SHARED_SECRET=your_shared_secret
+IXOPAY_LANGUAGE=en
+IXOPAY_GATEWAY_URL=https://gateway.ixopay.com/
+```
+
+#### 4. Resolve the client from the container
+
+```php
+use Ixopay\Client\Client;
+
+Route::post('/checkout/ixopay/debit', function (Client $ixopay) {
+    // Build a Debit transaction and send it using the injected SDK client.
+});
+```
+
+#### 5. Use the provided Laravel examples
+
+The repository now includes framework-oriented examples under
+[`examples/laravel`](examples/laravel):
+
+- `CheckoutController.php` for a debit / redirect flow
+- `CallbackController.php` for signed callback handling through a dedicated helper
+- `routes.php` for a minimal route setup
+
+These files are meant as integration starters you can copy into a Laravel app.
+
+#### 6. Laravel features included
+
+- service container binding for `Ixopay\Client\Client`
+- `Ixopay` facade alias
+- publishable config file
+- `ixopay:install` artisan command
+- `CallbackRequest` helper for validating and parsing signed callbacks
+- Testbench coverage for provider registration and config-driven client setup
+
+## Application Notes
+
+This fork also carries a small product and developer-experience proposal pack
+that builds on IXOPAY's public documentation and the Laravel integration work
+implemented here.
+
+- [Application overview](docs/application/README.md)
+- [Suggested updates vs new features](docs/application/suggested-updates-vs-new-features.md)
+- [Payment UI Lab](docs/application/payment-ui-lab.md)
+- [Receipt Lab](docs/application/receipt-lab.md)
+- [Sandbox workflow concept](docs/application/sandbox-workflow-concept.md)
+- [Developer assistant concept](docs/application/developer-assistant-concept.md)
 
 ## Support
 
