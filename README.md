@@ -24,6 +24,7 @@ provides convenient access to the [IXOPAY REST APIs][ixopay-docs-api].
     - [Setting up credentials](#setting-up-credentials)
     - [Process a debit transaction](#process-a-debit-transaction)
     - [Laravel integration](#laravel-integration)
+  - [Application Notes](#application-notes)
   - [Support](#support)
   - [Licence](#licence)
   - [See also](#see-also)
@@ -214,6 +215,19 @@ These files are meant as integration starters you can copy into a Laravel app.
 - `ixopay:install` artisan command
 - `CallbackRequest` helper for validating and parsing signed callbacks
 - Testbench coverage for provider registration and config-driven client setup
+
+## Application Notes
+
+This fork also carries a small product and developer-experience proposal pack
+that builds on IXOPAY's public documentation and the Laravel integration work
+implemented here.
+
+- [Application overview](docs/application/README.md)
+- [Suggested updates vs new features](docs/application/suggested-updates-vs-new-features.md)
+- [Payment UI Lab](docs/application/payment-ui-lab.md)
+- [Receipt Lab](docs/application/receipt-lab.md)
+- [Sandbox workflow concept](docs/application/sandbox-workflow-concept.md)
+- [Developer assistant concept](docs/application/developer-assistant-concept.md)
 
 ## Support
 
