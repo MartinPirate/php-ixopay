@@ -23,6 +23,7 @@ provides convenient access to the [IXOPAY REST APIs][ixopay-docs-api].
     - [Prerequisites](#prerequisites)
     - [Setting up credentials](#setting-up-credentials)
     - [Process a debit transaction](#process-a-debit-transaction)
+    - [Local sandbox](#local-sandbox)
     - [Laravel integration](#laravel-integration)
   - [Application Notes](#application-notes)
   - [Support](#support)
@@ -151,6 +152,26 @@ if ($result->isSuccess()) {
 
 ?>
 ```
+
+### Local sandbox
+
+The repository also includes a lightweight local sandbox example that lets you
+point the SDK at a local API URL and exercise predictable transaction outcomes
+such as redirect, pending, finished, and error flows.
+
+Start the sandbox:
+
+```bash
+php -S 127.0.0.1:8089 examples/sandbox/router.php
+```
+
+Run the demo debit:
+
+```bash
+php examples/sandbox/debit.php redirect
+```
+
+See [`examples/sandbox`](examples/sandbox) for details.
 
 ### Laravel integration
 
