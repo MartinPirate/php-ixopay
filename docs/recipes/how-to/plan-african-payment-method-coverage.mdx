@@ -1,0 +1,67 @@
+---
+title: "How to plan African payment method coverage"
+description: "Use this recipe to plan a merchant rollout that combines cards, mobile money, and fallback processing for African markets."
+sidebar_position: 12
+---
+
+# How to plan African payment method coverage
+
+Use this recipe to plan a merchant rollout that combines cards, mobile money, and fallback processing for African markets.
+
+## Prerequisites
+
+- A target launch country or region.
+- An IXOPAY connector strategy for card and alternative payment methods.
+- A fallback plan for redirects, delayed confirmations, and callback retries.
+
+## Recipe
+
+### Step 1 - Group payment methods by market fit
+
+Start with market and device context. Mobile-money-first regions should not use the same checkout ordering as card-first regions.
+
+```php
+$paymentMix = [
+    'KE' => ['mpesa', 'card', 'bank-transfer'],
+    'GH' => ['mobile-money', 'card'],
+    'ZA' => ['card', 'instant-eft'],
+];
+```
+
+### Step 2 - Keep fallback logic explicit
+
+Use IXOPAY orchestration to model fallback and retry behavior intentionally. Merchants should know when they are using a primary method, a fallback PSP, or a delayed confirmation flow.
+
+```php
+$routingPolicy = [
+    'primary' => 'local-mobile-money',
+    'fallback' => 'card-psp',
+    'retryWindowSeconds' => 120,
+    'callbackRequired' => true,
+];
+```
+
+### Step 3 - Document launch and receipt behavior
+
+For each market, document what customers see at checkout, what happens on pending confirmation, and what appears on the receipt.
+
+```php
+$launchChecklist = [
+    'checkoutOrdering' => 'mobile-money-first',
+    'pendingCopy' => 'Payment is being confirmed by your mobile network.',
+    'receiptTemplate' => 'mobile-money-summary',
+    'supportPath' => 'merchant-support-email',
+];
+```
+
+## Validation
+
+- Each market has an explicit payment method order.
+- Fallback behavior is documented for support teams.
+- Receipt and pending-result templates match the selected method mix.
+
+## Related documentation
+
+- [How to add alternative payment methods](https://documentation.ixopay.com/docs/recipes/how-to/add-apms)
+- [How to add a second PSP for fail-safe payments](https://documentation.ixopay.com/docs/recipes/how-to/add-failsafe-payments)
+

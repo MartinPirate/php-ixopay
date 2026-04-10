@@ -1,0 +1,52 @@
+{
+  "title": "How to test with a local sandbox",
+  "slug": "test-with-local-sandbox",
+  "position": 11,
+  "description": "Use this recipe to exercise IXOPAY SDK flows against a local sandbox API before testing against a shared or production-like gateway environment.",
+  "prerequisites": [
+    "The IXOPAY PHP SDK installed with Composer.",
+    "A local PHP runtime.",
+    "A merchant integration that can switch gateway URLs outside production."
+  ],
+  "steps": [
+    {
+      "title": "Start the local sandbox API",
+      "body": "Run the sandbox router from this repository. It exposes transaction, status, redirect, and callback endpoints for predictable scenarios.",
+      "code": {
+        "language": "bash",
+        "content": "php -S 127.0.0.1:8089 examples/sandbox/router.php"
+      }
+    },
+    {
+      "title": "Point the SDK at the sandbox",
+      "body": "Use the SDK's configurable API URL in non-production code and send an explicit scenario header.",
+      "code": {
+        "language": "php",
+        "content": "Client::setApiUrl('http://127.0.0.1:8089/');\n\n$client = new Client('sandbox-user', 'sandbox-password', 'sandbox-api-key', 'sandbox-shared-secret');\n$client->setCustomRequestHeaders([\n    'X-Sandbox-Scenario' => 'redirect',\n]);"
+      }
+    },
+    {
+      "title": "Run a transaction scenario",
+      "body": "Run one of the supported scenarios and inspect the redirect URL, status lookup, and callback payload.",
+      "code": {
+        "language": "bash",
+        "content": "php examples/sandbox/debit.php redirect\nphp examples/sandbox/debit.php pending\nphp examples/sandbox/debit.php finished\nphp examples/sandbox/debit.php error"
+      }
+    }
+  ],
+  "validation": [
+    "Redirect scenarios return a local hosted-payment redirect URL.",
+    "Error scenarios return a parsed SDK error object.",
+    "Status lookup returns a matching merchant transaction ID and sandbox scenario."
+  ],
+  "links": [
+    {
+      "label": "Testing your setup",
+      "url": "https://documentation.ixopay.com/docs/guides/getting-started/testing"
+    },
+    {
+      "label": "3-D Secure testing",
+      "url": "https://documentation.ixopay.com/docs/reference/features/3d-secure/testing"
+    }
+  ]
+}

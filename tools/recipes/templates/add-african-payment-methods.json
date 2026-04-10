@@ -1,0 +1,52 @@
+{
+  "title": "How to plan African payment method coverage",
+  "slug": "plan-african-payment-method-coverage",
+  "position": 12,
+  "description": "Use this recipe to plan a merchant rollout that combines cards, mobile money, and fallback processing for African markets.",
+  "prerequisites": [
+    "A target launch country or region.",
+    "An IXOPAY connector strategy for card and alternative payment methods.",
+    "A fallback plan for redirects, delayed confirmations, and callback retries."
+  ],
+  "steps": [
+    {
+      "title": "Group payment methods by market fit",
+      "body": "Start with market and device context. Mobile-money-first regions should not use the same checkout ordering as card-first regions.",
+      "code": {
+        "language": "php",
+        "content": "$paymentMix = [\n    'KE' => ['mpesa', 'card', 'bank-transfer'],\n    'GH' => ['mobile-money', 'card'],\n    'ZA' => ['card', 'instant-eft'],\n];"
+      }
+    },
+    {
+      "title": "Keep fallback logic explicit",
+      "body": "Use IXOPAY orchestration to model fallback and retry behavior intentionally. Merchants should know when they are using a primary method, a fallback PSP, or a delayed confirmation flow.",
+      "code": {
+        "language": "php",
+        "content": "$routingPolicy = [\n    'primary' => 'local-mobile-money',\n    'fallback' => 'card-psp',\n    'retryWindowSeconds' => 120,\n    'callbackRequired' => true,\n];"
+      }
+    },
+    {
+      "title": "Document launch and receipt behavior",
+      "body": "For each market, document what customers see at checkout, what happens on pending confirmation, and what appears on the receipt.",
+      "code": {
+        "language": "php",
+        "content": "$launchChecklist = [\n    'checkoutOrdering' => 'mobile-money-first',\n    'pendingCopy' => 'Payment is being confirmed by your mobile network.',\n    'receiptTemplate' => 'mobile-money-summary',\n    'supportPath' => 'merchant-support-email',\n];"
+      }
+    }
+  ],
+  "validation": [
+    "Each market has an explicit payment method order.",
+    "Fallback behavior is documented for support teams.",
+    "Receipt and pending-result templates match the selected method mix."
+  ],
+  "links": [
+    {
+      "label": "How to add alternative payment methods",
+      "url": "https://documentation.ixopay.com/docs/recipes/how-to/add-apms"
+    },
+    {
+      "label": "How to add a second PSP for fail-safe payments",
+      "url": "https://documentation.ixopay.com/docs/recipes/how-to/add-failsafe-payments"
+    }
+  ]
+}

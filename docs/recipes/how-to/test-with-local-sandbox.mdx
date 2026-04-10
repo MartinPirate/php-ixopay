@@ -1,0 +1,61 @@
+---
+title: "How to test with a local sandbox"
+description: "Use this recipe to exercise IXOPAY SDK flows against a local sandbox API before testing against a shared or production-like gateway environment."
+sidebar_position: 11
+---
+
+# How to test with a local sandbox
+
+Use this recipe to exercise IXOPAY SDK flows against a local sandbox API before testing against a shared or production-like gateway environment.
+
+## Prerequisites
+
+- The IXOPAY PHP SDK installed with Composer.
+- A local PHP runtime.
+- A merchant integration that can switch gateway URLs outside production.
+
+## Recipe
+
+### Step 1 - Start the local sandbox API
+
+Run the sandbox router from this repository. It exposes transaction, status, redirect, and callback endpoints for predictable scenarios.
+
+```bash
+php -S 127.0.0.1:8089 examples/sandbox/router.php
+```
+
+### Step 2 - Point the SDK at the sandbox
+
+Use the SDK's configurable API URL in non-production code and send an explicit scenario header.
+
+```php
+Client::setApiUrl('http://127.0.0.1:8089/');
+
+$client = new Client('sandbox-user', 'sandbox-password', 'sandbox-api-key', 'sandbox-shared-secret');
+$client->setCustomRequestHeaders([
+    'X-Sandbox-Scenario' => 'redirect',
+]);
+```
+
+### Step 3 - Run a transaction scenario
+
+Run one of the supported scenarios and inspect the redirect URL, status lookup, and callback payload.
+
+```bash
+php examples/sandbox/debit.php redirect
+php examples/sandbox/debit.php pending
+php examples/sandbox/debit.php finished
+php examples/sandbox/debit.php error
+```
+
+## Validation
+
+- Redirect scenarios return a local hosted-payment redirect URL.
+- Error scenarios return a parsed SDK error object.
+- Status lookup returns a matching merchant transaction ID and sandbox scenario.
+
+## Related documentation
+
+- [Testing your setup](https://documentation.ixopay.com/docs/guides/getting-started/testing)
+- [3-D Secure testing](https://documentation.ixopay.com/docs/reference/features/3d-secure/testing)
+

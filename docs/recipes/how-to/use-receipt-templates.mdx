@@ -1,0 +1,73 @@
+---
+title: "How to use receipt templates"
+description: "Use this recipe to add branded receipt and result-page templates to an IXOPAY-powered merchant checkout flow without confusing them with core payment processing."
+sidebar_position: 10
+---
+
+# How to use receipt templates
+
+Use this recipe to add branded receipt and result-page templates to an IXOPAY-powered merchant checkout flow without confusing them with core payment processing.
+
+## Prerequisites
+
+- An IXOPAY account with a configured connector API key and shared secret.
+- A merchant checkout that already handles success, cancel, error, and callback URLs.
+- A template surface in your application or documentation site where receipt variants can be selected.
+
+## Recipe
+
+### Step 1 - Choose the receipt template variant
+
+Start by selecting the template your merchant needs. Keep this separate from payment authorization: receipts should summarize what already happened, not drive whether the payment succeeds.
+
+```php
+$receiptTemplate = match ($merchantVertical) {
+    'travel' => 'travel-itinerary',
+    'marketplace' => 'marketplace-split',
+    'subscription' => 'subscription-renewal',
+    default => 'classic-summary',
+};
+```
+
+### Step 2 - Store the gateway reference returned by IXOPAY
+
+After the transaction response or callback is processed, store the IXOPAY reference fields with your internal order. The receipt template should render those values so support and reconciliation teams can trace the payment.
+
+```php
+$order->payment_reference = $result->getUuid();
+$order->merchant_transaction_id = $merchantTransactionId;
+$order->payment_method = $result->getPaymentMethod();
+$order->receipt_template = $receiptTemplate;
+$order->save();
+```
+
+### Step 3 - Render customer and operations templates from the same payment data
+
+Use one normalized receipt payload and render it into customer-facing and operations-facing templates. This keeps email receipts, result pages, and support views consistent.
+
+```php
+$receiptPayload = [
+    'orderNumber' => $order->number,
+    'amount' => $order->amount,
+    'currency' => $order->currency,
+    'status' => $order->payment_status,
+    'paymentReference' => $order->payment_reference,
+    'merchantTransactionId' => $order->merchant_transaction_id,
+    'template' => $order->receipt_template,
+];
+
+$customerHtml = $receiptRenderer->renderCustomerReceipt($receiptPayload);
+$operationsHtml = $receiptRenderer->renderOperationsSummary($receiptPayload);
+```
+
+## Validation
+
+- The receipt renders only after the payment result or callback has been processed.
+- The receipt includes both merchant transaction ID and IXOPAY reference UUID when available.
+- Email and result-page receipt variants are visually consistent but can expose different levels of operational detail.
+
+## Related documentation
+
+- [Pay-by-Link](https://documentation.ixopay.com/docs/guides/features/pay-by-link)
+- [FAST Editor](https://documentation.ixopay.com/manual/docs/fast)
+

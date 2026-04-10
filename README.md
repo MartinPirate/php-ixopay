@@ -19,6 +19,7 @@ provides convenient access to the [IXOPAY REST APIs][ixopay-docs-api].
     - [Requirements](#requirements)
     - [Composer](#composer)
   - [Documentation](#documentation)
+  - [Recipe templates](#recipe-templates)
   - [Usage](#usage)
     - [Prerequisites](#prerequisites)
     - [Setting up credentials](#setting-up-credentials)
@@ -55,6 +56,25 @@ information about how to use the transaction processing API.
 
 See the [IXOPAY API Reference][ixopay-docs-api] for a reference of all
 transaction processing API calls.
+
+## Recipe templates
+
+This branch includes a working recipe-template generator for the Developer Hub
+`Recipes -> How to ...` module. It turns structured templates from
+[`tools/recipes/templates`](tools/recipes/templates) into Docusaurus-style recipe
+pages under [`docs/recipes/how-to`](docs/recipes/how-to).
+
+Build the recipes:
+
+```bash
+composer recipes:build
+```
+
+Included templates:
+
+- `How to use receipt templates`
+- `How to test with a local sandbox`
+- `How to plan African payment method coverage`
 
 ## Usage
 
