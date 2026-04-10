@@ -18,7 +18,7 @@ Use this recipe to exercise IXOPAY SDK flows against a local sandbox API before 
 
 ### Step 1 - Start the local sandbox API
 
-Run the sandbox router from this repository. It exposes transaction, status, redirect, and callback endpoints for predictable scenarios.
+Run the sandbox router from this repository. It exposes transaction, status, redirect, test-credential, test-method, callback, and webhook replay endpoints for predictable scenarios.
 
 ```bash
 php -S 127.0.0.1:8089 examples/sandbox/router.php
@@ -26,14 +26,16 @@ php -S 127.0.0.1:8089 examples/sandbox/router.php
 
 ### Step 2 - Point the SDK at the sandbox
 
-Use the SDK's configurable API URL in non-production code and send an explicit scenario header.
+Use the SDK's configurable API URL in non-production code and send explicit payment-method and scenario headers.
 
 ```php
 Client::setApiUrl('http://127.0.0.1:8089/');
 
 $client = new Client('sandbox-user', 'sandbox-password', 'sandbox-api-key', 'sandbox-shared-secret');
 $client->setCustomRequestHeaders([
-    'X-Sandbox-Scenario' => 'redirect',
+    'Authorization' => 'Basic ' . base64_encode('sandbox-user:sandbox-password'),
+    'X-Sandbox-Payment-Method' => 'mpesa',
+    'X-Sandbox-Scenario' => 'mpesa-pending',
 ]);
 ```
 
@@ -42,17 +44,21 @@ $client->setCustomRequestHeaders([
 Run one of the supported scenarios and inspect the redirect URL, status lookup, and callback payload.
 
 ```bash
-php examples/sandbox/debit.php redirect
-php examples/sandbox/debit.php pending
-php examples/sandbox/debit.php finished
-php examples/sandbox/debit.php error
+php examples/sandbox/debit.php redirect card
+php examples/sandbox/debit.php card-3ds card
+php examples/sandbox/debit.php mpesa-success mpesa
+php examples/sandbox/debit.php mpesa-pending mpesa
+php examples/sandbox/debit.php mpesa-timeout mpesa
+php examples/sandbox/debit.php error card
 ```
 
 ## Validation
 
-- Redirect scenarios return a local hosted-payment redirect URL.
+- Redirect and card-3DS scenarios return a local hosted-payment redirect URL.
+- M-Pesa scenarios expose success, pending, and timeout behavior.
 - Error scenarios return a parsed SDK error object.
 - Status lookup returns a matching merchant transaction ID and sandbox scenario.
+- Callback payload endpoints include a signature generated from the sandbox shared secret.
 
 ## Related documentation
 

@@ -11,7 +11,7 @@
   "steps": [
     {
       "title": "Start the local sandbox API",
-      "body": "Run the sandbox router from this repository. It exposes transaction, status, redirect, and callback endpoints for predictable scenarios.",
+      "body": "Run the sandbox router from this repository. It exposes transaction, status, redirect, test-credential, test-method, callback, and webhook replay endpoints for predictable scenarios.",
       "code": {
         "language": "bash",
         "content": "php -S 127.0.0.1:8089 examples/sandbox/router.php"
@@ -19,10 +19,10 @@
     },
     {
       "title": "Point the SDK at the sandbox",
-      "body": "Use the SDK's configurable API URL in non-production code and send an explicit scenario header.",
+      "body": "Use the SDK's configurable API URL in non-production code and send explicit payment-method and scenario headers.",
       "code": {
         "language": "php",
-        "content": "Client::setApiUrl('http://127.0.0.1:8089/');\n\n$client = new Client('sandbox-user', 'sandbox-password', 'sandbox-api-key', 'sandbox-shared-secret');\n$client->setCustomRequestHeaders([\n    'X-Sandbox-Scenario' => 'redirect',\n]);"
+        "content": "Client::setApiUrl('http://127.0.0.1:8089/');\n\n$client = new Client('sandbox-user', 'sandbox-password', 'sandbox-api-key', 'sandbox-shared-secret');\n$client->setCustomRequestHeaders([\n    'Authorization' => 'Basic ' . base64_encode('sandbox-user:sandbox-password'),\n    'X-Sandbox-Payment-Method' => 'mpesa',\n    'X-Sandbox-Scenario' => 'mpesa-pending',\n]);"
       }
     },
     {
@@ -30,14 +30,16 @@
       "body": "Run one of the supported scenarios and inspect the redirect URL, status lookup, and callback payload.",
       "code": {
         "language": "bash",
-        "content": "php examples/sandbox/debit.php redirect\nphp examples/sandbox/debit.php pending\nphp examples/sandbox/debit.php finished\nphp examples/sandbox/debit.php error"
+        "content": "php examples/sandbox/debit.php redirect card\nphp examples/sandbox/debit.php card-3ds card\nphp examples/sandbox/debit.php mpesa-success mpesa\nphp examples/sandbox/debit.php mpesa-pending mpesa\nphp examples/sandbox/debit.php mpesa-timeout mpesa\nphp examples/sandbox/debit.php error card"
       }
     }
   ],
   "validation": [
-    "Redirect scenarios return a local hosted-payment redirect URL.",
+    "Redirect and card-3DS scenarios return a local hosted-payment redirect URL.",
+    "M-Pesa scenarios expose success, pending, and timeout behavior.",
     "Error scenarios return a parsed SDK error object.",
-    "Status lookup returns a matching merchant transaction ID and sandbox scenario."
+    "Status lookup returns a matching merchant transaction ID and sandbox scenario.",
+    "Callback payload endpoints include a signature generated from the sandbox shared secret."
   ],
   "links": [
     {

@@ -11,12 +11,15 @@ use Ixopay\Client\Transaction\Debit;
 use Ixopay\Client\Transaction\Result;
 
 $scenario = $argv[1] ?? 'redirect';
+$paymentMethod = $argv[2] ?? (str_starts_with($scenario, 'mpesa') ? 'mpesa' : 'card');
 
 Client::setApiUrl('http://127.0.0.1:8089/');
 
 $client = new Client('sandbox-user', 'sandbox-password', 'sandbox-api-key', 'sandbox-shared-secret');
 $client->setCustomRequestHeaders([
+    'Authorization' => 'Basic ' . base64_encode('sandbox-user:sandbox-password'),
     'X-Sandbox-Scenario' => $scenario,
+    'X-Sandbox-Payment-Method' => $paymentMethod,
 ]);
 
 $customer = (new Customer())
@@ -25,7 +28,7 @@ $customer = (new Customer())
     ->setEmail('sandbox@example.test')
     ->setIpAddress('127.0.0.1');
 
-$merchantTransactionId = 'sandbox-' . date('YmdHis');
+$merchantTransactionId = 'sandbox-' . date('YmdHis') . '-' . substr(sha1(uniqid('', true)), 0, 8);
 
 $transaction = (new Debit())
     ->setMerchantTransactionId($merchantTransactionId)
@@ -39,6 +42,7 @@ $transaction = (new Debit())
 $result = $client->debit($transaction);
 
 echo 'Scenario: ' . $scenario . PHP_EOL;
+echo 'Payment method: ' . $paymentMethod . PHP_EOL;
 echo 'Success: ' . ($result->isSuccess() ? 'true' : 'false') . PHP_EOL;
 echo 'Return type: ' . $result->getReturnType() . PHP_EOL;
 echo 'UUID: ' . $result->getUuid() . PHP_EOL;

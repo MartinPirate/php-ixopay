@@ -5,6 +5,10 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 const IXOPAY_SANDBOX_STORAGE = __DIR__ . '/storage/transactions.json';
+const IXOPAY_SANDBOX_API_KEY = 'sandbox-api-key';
+const IXOPAY_SANDBOX_USERNAME = 'sandbox-user';
+const IXOPAY_SANDBOX_PASSWORD = 'sandbox-password';
+const IXOPAY_SANDBOX_SHARED_SECRET = 'sandbox-shared-secret';
 
 if (!is_dir(dirname(IXOPAY_SANDBOX_STORAGE))) {
     mkdir(dirname(IXOPAY_SANDBOX_STORAGE), 0777, true);
@@ -13,10 +17,50 @@ if (!is_dir(dirname(IXOPAY_SANDBOX_STORAGE))) {
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 
-if ($method === 'POST' && preg_match('#^/api/v3/transaction/[^/]+/(debit|preauthorize)$#', $path, $matches)) {
-    $transactionType = strtoupper($matches[1]);
+if ($method === 'GET' && $path === '/sandbox/test-credentials') {
+    sendJson([
+        'apiKey' => IXOPAY_SANDBOX_API_KEY,
+        'username' => IXOPAY_SANDBOX_USERNAME,
+        'password' => IXOPAY_SANDBOX_PASSWORD,
+        'sharedSecret' => IXOPAY_SANDBOX_SHARED_SECRET,
+        'baseUrl' => getBaseUrl() . '/',
+    ]);
+}
+
+if ($method === 'GET' && $path === '/sandbox/payment-methods') {
+    sendJson([
+        'paymentMethods' => [
+            [
+                'id' => 'card',
+                'label' => 'Card',
+                'testValues' => [
+                    'success' => '4111111111111111',
+                    'decline' => '4000000000000002',
+                    'threeDSecure' => '4000000000003220',
+                ],
+                'scenarios' => ['redirect', 'finished', 'error', 'card-3ds'],
+            ],
+            [
+                'id' => 'mpesa',
+                'label' => 'M-Pesa',
+                'testValues' => [
+                    'success' => '+254700000001',
+                    'pending' => '+254700000002',
+                    'timeout' => '+254700000003',
+                ],
+                'scenarios' => ['mpesa-success', 'mpesa-pending', 'mpesa-timeout'],
+            ],
+        ],
+    ]);
+}
+
+if ($method === 'POST' && preg_match('#^/api/v3/transaction/([^/]+)/(debit|preauthorize)$#', $path, $matches)) {
+    assertSandboxCredentials($matches[1]);
+
+    $transactionType = strtoupper($matches[2]);
     $payload = json_decode(file_get_contents('php://input'), true) ?: [];
     $scenario = strtolower((string) getHeaderValue('X-Sandbox-Scenario', 'redirect'));
+    $paymentMethod = strtolower((string) getHeaderValue('X-Sandbox-Payment-Method', inferPaymentMethod($scenario)));
 
     $merchantTransactionId = (string) ($payload['merchantTransactionId'] ?? uniqid('sandbox-', true));
     $amount = (float) ($payload['amount'] ?? 0);
@@ -32,7 +76,8 @@ if ($method === 'POST' && preg_match('#^/api/v3/transaction/[^/]+/(debit|preauth
         'scenario' => $scenario,
         'amount' => $amount,
         'currency' => $currency,
-        'paymentMethod' => 'mock-card',
+        'paymentMethod' => $paymentMethod,
+        'createdAt' => gmdate(DATE_ATOM),
     ];
 
     persistTransaction($merchantTransactionId, $record);
@@ -40,8 +85,10 @@ if ($method === 'POST' && preg_match('#^/api/v3/transaction/[^/]+/(debit|preauth
     sendJson(buildTransactionResponse($record));
 }
 
-if ($method === 'GET' && preg_match('#^/api/v3/status/[^/]+/getByMerchantTransactionId/(.+)$#', $path, $matches)) {
-    $merchantTransactionId = rawurldecode($matches[1]);
+if ($method === 'GET' && preg_match('#^/api/v3/status/([^/]+)/getByMerchantTransactionId/(.+)$#', $path, $matches)) {
+    assertSandboxCredentials($matches[1], false);
+
+    $merchantTransactionId = rawurldecode($matches[2]);
     $record = loadTransaction($merchantTransactionId);
 
     if ($record === null) {
@@ -66,7 +113,37 @@ if ($method === 'GET' && preg_match('#^/sandbox/callback/(.+)$#', $path, $matche
         ], 404);
     }
 
-    sendJson(buildCallbackPayload($record));
+    $payload = buildCallbackPayload($record);
+
+    sendJson([
+        'payload' => $payload,
+        'signature' => signPayload($payload),
+        'headers' => [
+            'X-Signature' => signPayload($payload),
+            'Content-Type' => 'application/json',
+        ],
+    ]);
+}
+
+if ($method === 'POST' && preg_match('#^/sandbox/webhooks/(.+)/replay$#', $path, $matches)) {
+    $merchantTransactionId = rawurldecode($matches[1]);
+    $record = loadTransaction($merchantTransactionId);
+
+    if ($record === null) {
+        sendJson([
+            'result' => 'INVALID_REQUEST',
+            'merchantTransactionId' => $merchantTransactionId,
+        ], 404);
+    }
+
+    $payload = buildCallbackPayload($record);
+
+    sendJson([
+        'delivered' => true,
+        'payload' => $payload,
+        'signature' => signPayload($payload),
+        'message' => 'Sandbox replay generated. Deliver this payload to your local callback URL.',
+    ]);
 }
 
 if ($method === 'GET' && preg_match('#^/sandbox/redirect/(.+)$#', $path, $matches)) {
@@ -91,10 +168,13 @@ if ($method === 'GET' && preg_match('#^/sandbox/redirect/(.+)$#', $path, $matche
 sendJson([
     'name' => 'IXOPAY Local Sandbox',
     'routes' => [
+        'GET /sandbox/test-credentials',
+        'GET /sandbox/payment-methods',
         'POST /api/v3/transaction/{apiKey}/debit',
         'POST /api/v3/transaction/{apiKey}/preauthorize',
         'GET /api/v3/status/{apiKey}/getByMerchantTransactionId/{merchantTransactionId}',
         'GET /sandbox/callback/{merchantTransactionId}',
+        'POST /sandbox/webhooks/{merchantTransactionId}/replay',
     ],
 ]);
 
@@ -111,13 +191,33 @@ function buildTransactionResponse(array $record): array
     ];
 
     switch ($record['scenario']) {
+        case 'mpesa-pending':
         case 'pending':
             return $base + [
                 'returnType' => 'PENDING',
             ];
+        case 'mpesa-success':
         case 'finished':
             return $base + [
                 'returnType' => 'FINISHED',
+            ];
+        case 'mpesa-timeout':
+            return $base + [
+                'returnType' => 'PENDING',
+                'extraData' => [
+                    'sandboxScenario' => $record['scenario'],
+                    'providerMessage' => 'M-Pesa STK push timed out. Await callback or poll status.',
+                ],
+            ];
+        case 'card-3ds':
+            return $base + [
+                'returnType' => 'REDIRECT',
+                'redirectType' => 'fullpage',
+                'redirectUrl' => getBaseUrl() . '/sandbox/redirect/' . rawurlencode($record['merchantTransactionId']) . '?challenge=3ds',
+                'extraData' => [
+                    'sandboxScenario' => $record['scenario'],
+                    'threeDSecure' => 'challenge-required',
+                ],
             ];
         case 'error':
             return $base + [
@@ -142,7 +242,7 @@ function buildTransactionResponse(array $record): array
 function buildStatusResponse(array $record): array
 {
     $status = match ($record['scenario']) {
-        'pending', 'redirect' => 'PENDING',
+        'pending', 'redirect', 'mpesa-pending', 'mpesa-timeout', 'card-3ds' => 'PENDING',
         'error' => 'ERROR',
         default => 'SUCCESS',
     };
@@ -165,7 +265,7 @@ function buildStatusResponse(array $record): array
 
 function buildCallbackPayload(array $record): array
 {
-    $result = $record['scenario'] === 'error' ? 'ERROR' : 'OK';
+    $result = in_array($record['scenario'], ['error', 'mpesa-timeout'], true) ? 'ERROR' : 'OK';
 
     return [
         'result' => $result,
@@ -179,11 +279,71 @@ function buildCallbackPayload(array $record): array
         'extraData' => [
             'sandboxScenario' => $record['scenario'],
         ],
-        'errors' => $record['scenario'] === 'error' ? [[
-            'code' => 'SANDBOX_DECLINED',
-            'message' => 'The sandbox issuer declined the transaction.',
+        'errors' => in_array($record['scenario'], ['error', 'mpesa-timeout'], true) ? [[
+            'code' => $record['scenario'] === 'mpesa-timeout' ? 'SANDBOX_MPESA_TIMEOUT' : 'SANDBOX_DECLINED',
+            'message' => $record['scenario'] === 'mpesa-timeout'
+                ? 'The sandbox M-Pesa confirmation timed out.'
+                : 'The sandbox issuer declined the transaction.',
         ]] : [],
     ];
+}
+
+function inferPaymentMethod(string $scenario): string
+{
+    if (str_starts_with($scenario, 'mpesa')) {
+        return 'mpesa';
+    }
+
+    return 'card';
+}
+
+function assertSandboxCredentials(string $apiKey, bool $requireBasicAuth = true): void
+{
+    if ($apiKey !== IXOPAY_SANDBOX_API_KEY) {
+        sendJson([
+            'success' => false,
+            'errorCode' => 'SANDBOX_INVALID_API_KEY',
+            'errorMessage' => 'Use sandbox-api-key for the local sandbox.',
+        ], 401);
+    }
+
+    if (!$requireBasicAuth) {
+        return;
+    }
+
+    [$username, $password] = getBasicAuthCredentials();
+
+    if ($username !== IXOPAY_SANDBOX_USERNAME || $password !== IXOPAY_SANDBOX_PASSWORD) {
+        sendJson([
+            'success' => false,
+            'errorCode' => 'SANDBOX_INVALID_CREDENTIALS',
+            'errorMessage' => 'Use sandbox-user / sandbox-password for the local sandbox.',
+        ], 401);
+    }
+}
+
+function signPayload(array $payload): string
+{
+    return hash_hmac('sha512', json_encode($payload, JSON_UNESCAPED_SLASHES), IXOPAY_SANDBOX_SHARED_SECRET);
+}
+
+function getBasicAuthCredentials(): array
+{
+    if (isset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'])) {
+        return [(string) $_SERVER['PHP_AUTH_USER'], (string) $_SERVER['PHP_AUTH_PW']];
+    }
+
+    $authorization = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+
+    if (str_starts_with($authorization, 'Basic ')) {
+        $decoded = base64_decode(substr($authorization, 6), true);
+
+        if (is_string($decoded) && str_contains($decoded, ':')) {
+            return explode(':', $decoded, 2);
+        }
+    }
+
+    return ['', ''];
 }
 
 function persistTransaction(string $merchantTransactionId, array $record): void
